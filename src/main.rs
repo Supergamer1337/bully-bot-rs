@@ -1,6 +1,9 @@
 use dotenv::dotenv;
+use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
-use std::env;
+use serenity::utils::MessageBuilder;
+use std::fs::DirEntry;
+use std::{env, fs};
 
 use serenity::async_trait;
 use serenity::framework::StandardFramework;
@@ -9,6 +12,7 @@ use serenity::prelude::*;
 
 struct Handler {
     bully_chance: f64,
+    assets: Vec<DirEntry>,
 }
 
 #[async_trait]
@@ -20,7 +24,18 @@ impl EventHandler for Handler {
 
         let num: f64 = thread_rng().gen();
         if num < self.bully_chance {
-            if let Err(why) = msg.reply(&ctx.http, "You're being bullied").await {
+            let video = self.assets.choose(&mut thread_rng()).unwrap();
+            let video_path = video.path();
+
+            if let Err(why) = msg
+                .channel_id
+                .send_message(&ctx.http, |m| {
+                    m.reference_message(&msg);
+                    m.add_file(&video_path);
+                    m
+                })
+                .await
+            {
                 println!("Error sending message: {:?}", why);
             }
         }
@@ -33,6 +48,12 @@ async fn main() {
 
     let framework = StandardFramework::new();
 
+    let files: Vec<DirEntry> = fs::read_dir("assets")
+        .unwrap()
+        .map(|f| f.unwrap())
+        .collect();
+    println!("{:?}", files);
+
     let token = env::var("DISCORD_TOKEN").expect("No token provided");
     let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
     let mut client = Client::builder(token, intents)
@@ -41,6 +62,7 @@ async fn main() {
                 .expect("No bully chance provided")
                 .parse()
                 .expect("Bully chance is not a number"),
+            assets: files,
         })
         .framework(framework)
         .await

@@ -2,6 +2,7 @@ use dotenv::dotenv;
 use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
 use std::fs::DirEntry;
+use std::io;
 use std::{env, fs};
 
 use serenity::async_trait;
@@ -29,7 +30,10 @@ impl EventHandler for Handler {
 }
 
 async fn send_bully_message(ctx: &Context, msg: &Message, handler: &Handler) {
-    let video = handler.assets.choose(&mut thread_rng()).unwrap().path();
+    let video = match handler.assets.choose(&mut thread_rng()) {
+        Some(file) => file.path(),
+        None => return println!("Failed to choose a bully file. Skipping message."),
+    };
 
     if let Err(why) = msg
         .channel_id
@@ -49,7 +53,7 @@ async fn main() {
     dotenv().ok();
 
     let framework = StandardFramework::new();
-    let mut client = create_client(framework).await;
+    let mut client = create_discord_client(framework).await;
 
     println!("------------------");
     println!("Starting client");
@@ -58,7 +62,7 @@ async fn main() {
     }
 }
 
-async fn create_client<'a>(framework: StandardFramework) -> Client {
+async fn create_discord_client(framework: StandardFramework) -> Client {
     let files = read_bully_files();
     let (token, intents) = get_token_and_intents();
     Client::builder(token, intents)
@@ -72,14 +76,30 @@ async fn create_client<'a>(framework: StandardFramework) -> Client {
 }
 
 fn read_bully_files() -> Vec<DirEntry> {
+    let mut errors: Vec<io::Error> = Vec::new();
     let files: Vec<DirEntry> = fs::read_dir("assets")
-        .unwrap()
-        .map(|f| f.unwrap())
+        .expect("Failed to read assets folder")
+        .filter_map(|f| f.map_err(|e| errors.push(e)).ok())
         .collect();
+
+    if errors.len() > 0 {
+        println!(
+            "Errors reading {} files, skipping them with the following errors:",
+            errors.len()
+        );
+        for error in errors {
+            println!("Error reading file: {:?}", error);
+            println!("------------------")
+        }
+    }
 
     println!("Found {} bully files:", files.len());
     for file in &files {
-        println!("{}", file.file_name().to_str().unwrap());
+        if let Some(file_name) = file.file_name().to_str() {
+            println!("{}", file_name);
+        } else {
+            println!("Unknown file name");
+        }
     }
 
     files

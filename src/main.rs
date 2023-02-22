@@ -22,10 +22,26 @@ impl EventHandler for Handler {
             return;
         }
 
+        if !message_is_meme(&msg) {
+            return;
+        }
+
         let num: f64 = thread_rng().gen();
         if num < self.bully_chance {
             send_bully_message(&ctx, &msg, &self).await;
         }
+    }
+}
+
+fn message_is_meme(msg: &Message) -> bool {
+    if msg.embeds.len() > 0
+        || msg.content.contains("https://")
+        || msg.content.contains("http://")
+        || msg.attachments.len() > 0
+    {
+        true
+    } else {
+        false
     }
 }
 

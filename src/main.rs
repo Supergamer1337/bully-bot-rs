@@ -32,7 +32,10 @@ impl EventHandler for Handler {
 async fn send_bully_message(ctx: &Context, msg: &Message, handler: &Handler) {
     let video = match handler.assets.choose(&mut thread_rng()) {
         Some(file) => file.path(),
-        None => return println!("Failed to choose a bully file. Skipping message."),
+        None => {
+            println!("Failed to choose a bully file. Skipping message.");
+            return;
+        }
     };
 
     if let Err(why) = msg
@@ -82,6 +85,12 @@ fn read_bully_files() -> Vec<DirEntry> {
         .filter_map(|f| f.map_err(|e| errors.push(e)).ok())
         .collect();
 
+    print_errors_and_files(&errors, &files);
+
+    files
+}
+
+fn print_errors_and_files(errors: &Vec<io::Error>, files: &Vec<DirEntry>) {
     if errors.len() > 0 {
         println!(
             "Errors reading {} files, skipping them with the following errors:",
@@ -94,15 +103,13 @@ fn read_bully_files() -> Vec<DirEntry> {
     }
 
     println!("Found {} bully files:", files.len());
-    for file in &files {
+    for file in files {
         if let Some(file_name) = file.file_name().to_str() {
             println!("{}", file_name);
         } else {
             println!("Unknown file name");
         }
     }
-
-    files
 }
 
 fn get_token_and_intents() -> (String, GatewayIntents) {

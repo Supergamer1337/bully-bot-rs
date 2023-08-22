@@ -8,10 +8,12 @@ use std::{env, fs};
 use serenity::async_trait;
 use serenity::framework::StandardFramework;
 use serenity::model::channel::Message;
+use serenity::model::prelude::*;
 use serenity::prelude::*;
 
 struct Handler {
     bully_chance: f64,
+    cringe_channels: Vec<u64>,
     assets: Vec<DirEntry>,
 }
 
@@ -27,6 +29,15 @@ impl EventHandler for Handler {
         }
 
         let num: f64 = thread_rng().gen();
+        if self.cringe_channels.contains(&msg.channel_id.as_u64()) {
+            if num > 0.5 {
+                return;
+            }
+
+            send_cringe_message(&ctx, &msg).await;
+            return;
+        }
+
         if num < self.bully_chance {
             send_bully_message(&ctx, &msg, &self).await;
         }
@@ -67,6 +78,20 @@ async fn send_bully_message(ctx: &Context, msg: &Message, handler: &Handler) {
     }
 }
 
+async fn send_cringe_message(ctx: &Context, msg: &Message) {
+    if let Err(why) = msg
+        .channel_id
+        .send_message(&ctx.http, |m| {
+            m.reference_message(msg);
+            m.content("Honestly, this is cringe.");
+            m
+        })
+        .await
+    {
+        println!("Error sending message: {:?}", why);
+    }
+}
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
@@ -87,6 +112,7 @@ async fn create_discord_client(framework: StandardFramework) -> Client {
     Client::builder(token, intents)
         .event_handler(Handler {
             bully_chance: get_bully_chance(),
+            cringe_channels: get_cringe_channels(),
             assets: files,
         })
         .framework(framework)
@@ -140,4 +166,28 @@ fn get_bully_chance() -> f64 {
     bully_chance
         .parse()
         .expect("Bully chance is not a float number")
+}
+
+fn get_cringe_channels() -> Vec<u64> {
+    let cringe_channels = match env::var("CRINGE_CHANNELS") {
+        Ok(channels) => channels,
+        Err(_) => {
+            println!("------------------");
+            println!("No cringe channels provided, skipping cringe messages");
+            return Vec::new();
+        }
+    };
+
+    if cringe_channels.is_empty() {
+        println!("------------------");
+        println!("No cringe channels provided, skipping cringe messages");
+        return Vec::new();
+    }
+
+    let channels: Vec<u64> = cringe_channels
+        .split(",")
+        .map(|s| s.parse().expect("Cringe channel is not a number"))
+        .collect();
+
+    channels
 }

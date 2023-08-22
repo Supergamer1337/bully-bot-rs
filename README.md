@@ -10,4 +10,5 @@ Made to get a feel for writing Discord bots in Rust (and just learning Rust in g
 DISCORD_TOKEN=SOME_DISCORD_TOKEN # The Discord token used to authenticate the bot
 BULLY_CHANCE=0.1 # Chance of a bully message being sent
 CRINGE_CHANNELS=CHANNEL_ID,CHANNEL_ID_2 # Comma separated list of channel IDs to send cringe messages to
+CRINGE_CHANCE=0.5 # Chance of a cringe message being sent
 ```

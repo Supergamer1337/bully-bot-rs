@@ -14,6 +14,7 @@ use serenity::prelude::*;
 struct Handler {
     bully_chance: f64,
     cringe_channels: Vec<u64>,
+    cringe_chance: f64,
     assets: Vec<DirEntry>,
 }
 
@@ -30,7 +31,7 @@ impl EventHandler for Handler {
 
         let num: f64 = thread_rng().gen();
         if self.cringe_channels.contains(&msg.channel_id.as_u64()) {
-            if num > 0.5 {
+            if num < self.cringe_chance {
                 return;
             }
 
@@ -113,6 +114,7 @@ async fn create_discord_client(framework: StandardFramework) -> Client {
         .event_handler(Handler {
             bully_chance: get_bully_chance(),
             cringe_channels: get_cringe_channels(),
+            cringe_chance: get_cringe_chance(),
             assets: files,
         })
         .framework(framework)
@@ -190,4 +192,19 @@ fn get_cringe_channels() -> Vec<u64> {
         .collect();
 
     channels
+}
+
+fn get_cringe_chance() -> f64 {
+    let cringe_chance = match env::var("CRINGE_CHANCE") {
+        Ok(chance) => chance,
+        Err(_) => {
+            println!("------------------");
+            println!("No cringe chance provided, skipping cringe messages");
+            return 0.0;
+        }
+    };
+
+    cringe_chance
+        .parse()
+        .expect("Cringe chance is not a float number")
 }

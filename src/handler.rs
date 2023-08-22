@@ -1,12 +1,12 @@
 use rand::{seq::SliceRandom, Rng};
 use serenity::{model::prelude::*, prelude::*};
-use std::fs::DirEntry;
+use std::path::PathBuf;
 
 pub struct Handler {
     bully_chance: f64,
     cringe_channels: Vec<u64>,
     cringe_chance: f64,
-    assets: Vec<DirEntry>,
+    assets: Vec<PathBuf>,
 }
 
 #[serenity::async_trait]
@@ -39,7 +39,7 @@ impl EventHandler for Handler {
 impl Handler {
     pub fn new(
         bully_chance: f64,
-        assets: Vec<DirEntry>,
+        assets: Vec<PathBuf>,
         cringe_channels: Vec<u64>,
         cringe_chance: f64,
     ) -> Self {
@@ -53,7 +53,7 @@ impl Handler {
 
     async fn send_bully_message(&self, ctx: &Context, msg: &Message) {
         let video = match self.assets.choose(&mut rand::thread_rng()) {
-            Some(file) => file.path(),
+            Some(file) => file,
             None => {
                 println!("Failed to choose a bully file. Skipping message.");
                 return;
@@ -64,7 +64,7 @@ impl Handler {
             .channel_id
             .send_message(&ctx.http, |m| {
                 m.reference_message(msg);
-                m.add_file(&video);
+                m.add_file(video);
                 m
             })
             .await
